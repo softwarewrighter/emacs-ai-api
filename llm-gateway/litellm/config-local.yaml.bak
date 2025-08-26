@@ -1,0 +1,73 @@
+# LiteLLM Configuration for Local Testing Only
+# No cloud API keys required!
+
+general_settings:
+  master_key: sk-local-test-key-123
+  ui: true
+
+litellm_settings:
+  timeout: 120
+  num_retries: 2
+  drop_params: true
+
+router_settings:
+  routing_strategy: latency-based-routing
+
+model_list:
+  # ========== LOCALHOST MODELS ==========
+  - model_name: localhost-llama3
+    litellm_params:
+      model: ollama/llama3.2:latest
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  
+  - model_name: localhost-qwen-coder
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  
+  - model_name: localhost-llama-vision
+    litellm_params:
+      model: ollama/llama3.2-vision:11b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  
+  # ========== BIG72.LOCAL MODELS ==========
+  # These will be configured after we check what's available
+  - model_name: big72-default
+    litellm_params:
+      model: ollama/llama3.2:latest  # Adjust based on what's on big72
+      api_base: http://big72.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  
+  # ========== ROUTING ALIASES ==========
+  - model_name: coding-local
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+  - model_name: coding-local
+    litellm_params:
+      model: ollama/llama3.2:latest
+      api_base: http://big72.local:11434
+      api_key: sk-local
+  
+  - model_name: chat-local
+    litellm_params:
+      model: ollama/llama3.2:latest
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+  - model_name: chat-local
+    litellm_params:
+      model: ollama/llama3.2:latest
+      api_base: http://big72.local:11434
+      api_key: sk-local

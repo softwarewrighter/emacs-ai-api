@@ -1,0 +1,9 @@
+
+
+ `(defun hello-litellm ()
+   (message "Hello from LiteLLM elisp"))`
+
+(defun hello-litellm ()
+   (message "Hello from LiteLLM elisp"))
+
+(hello-litellm)
