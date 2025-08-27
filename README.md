@@ -61,41 +61,33 @@ curl http://localhost:4000/health/readiness
 
 ### 4. Configure Emacs
 
-Load the appropriate configuration file based on your needs:
+Load the unified configuration:
 
 ```elisp
-;; For OpenAI + local models via LiteLLM
-(load-file "~/path/to/llm-gateway/emacs/gptel-openai.el")
-
-;; For dynamic Ollama endpoint selection
-(load-file "~/path/to/llm-gateway/emacs/gptel-ollama-selector.el")
+;; Single configuration for all providers
+(load-file "~/path/to/llm-gateway/emacs/gptel-unified.el")
 ```
 
-## Key Bindings
+Press `C-c C-h` for comprehensive help after loading.
 
-### OpenAI Configuration (gptel-openai.el)
+## Key Bindings (gptel-unified.el)
 
-| Key Binding | Function | Description |
-|------------|----------|-------------|
-| `C-c o g` | gptel-use-gpt4o | Select GPT-4o model |
-| `C-c o m` | gptel-use-gpt4o-mini | Select GPT-4o-mini (cheaper) |
-| `C-c o c` | gptel-check-openai-models | List available OpenAI models |
-| `C-c o s` | gptel-safe-send | Send with error handling |
-| `C-c o u` | gptel-check-usage | View usage report |
-| `C-c o ?` | gptel-show-current-config | Show current settings |
+All commands use the consistent `C-c C-*` pattern:
 
-### Ollama Selector (gptel-ollama-selector.el)
-
-| Key Binding | Function | Description |
-|------------|----------|-------------|
-| `C-c g L` | gptel-list-endpoints | List all endpoints |
-| `C-c g l` | gptel-list-models | List models at current endpoint |
-| `C-c g S l` | gptel-select-localhost | Select localhost Ollama |
-| `C-c g S b` | gptel-select-big72 | Select big72 Ollama |
-| `C-c g S L` | gptel-select-litellm | Select LiteLLM gateway |
-| `C-c g s q` | gptel-select-qwen | Select Qwen model |
-| `C-c g s m` | gptel-select-mistral | Select Mistral model |
-| `C-c g RET` | gptel-send | Send to current model |
+| Key | Command | Description |
+|-----|---------|-------------|
+| **C-c C-h** | **Help** | **Comprehensive help - START HERE** |
+| C-c C-m | Select model | Choose any model interactively |
+| C-c C-1 | Best quality | Auto-select Claude/GPT-4o |
+| C-c C-2 | Fast/cheap | Auto-select Haiku/GPT-4o-mini |
+| C-c C-3 | Local | Auto-select Ollama models |
+| C-c RET | Send | Send buffer/paragraph at point |
+| C-c C-SPC | Send region | Send selected text |
+| C-c C-n | New chat | Open new gptel buffer |
+| C-c C-u | Usage | View costs and tokens |
+| C-c C-r | Refresh | Re-discover models from LiteLLM |
+| C-c C-l | List models | Show all available models |
+| C-c C-? | Status | Show current configuration |
 
 ## Project Structure
 

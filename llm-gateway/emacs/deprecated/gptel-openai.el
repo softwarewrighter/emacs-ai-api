@@ -23,9 +23,15 @@
               "qwen2.5-coder:14b"
               "qwen2.5:7b"
               "mistral:latest"
-              "gpt-4o"           ; Available with standard API
-              "gpt-4o-mini"      ; Available with standard API
-              "gpt-4-turbo")))   ; Available with standard API
+              "gpt-4o"                      ; OpenAI
+              "gpt-4o-mini"                 ; OpenAI
+              "gpt-4-turbo"                 ; OpenAI
+              "claude-3-5-sonnet-20241022"  ; Anthropic
+              "claude-3-5-haiku-20241022"   ; Anthropic
+              "claude-3-opus-20240229"      ; Anthropic
+              "gemini-1.5-pro"              ; Google
+              "gemini-1.5-flash"            ; Google
+              "gemini-1.5-flash-8b")))      ; Google
 
 ;; ============================================================================
 ;; Model Selection Functions
@@ -46,6 +52,38 @@
   (setq gptel-model "gpt-4o-mini")
   (setq gptel-stream t)
   (message "Selected: GPT-4o-mini via LiteLLM"))
+
+(defun gptel-use-claude-sonnet ()
+  "Select Claude 3.5 Sonnet model."
+  (interactive)
+  (setq gptel-backend gptel-litellm-openai)
+  (setq gptel-model "claude-3-5-sonnet-20241022")
+  (setq gptel-stream t)
+  (message "Selected: Claude 3.5 Sonnet via LiteLLM"))
+
+(defun gptel-use-claude-haiku ()
+  "Select Claude 3.5 Haiku model."
+  (interactive)
+  (setq gptel-backend gptel-litellm-openai)
+  (setq gptel-model "claude-3-5-haiku-20241022")
+  (setq gptel-stream t)
+  (message "Selected: Claude 3.5 Haiku via LiteLLM"))
+
+(defun gptel-use-gemini-pro ()
+  "Select Gemini 1.5 Pro model."
+  (interactive)
+  (setq gptel-backend gptel-litellm-openai)
+  (setq gptel-model "gemini-1.5-pro")
+  (setq gptel-stream t)
+  (message "Selected: Gemini 1.5 Pro via LiteLLM"))
+
+(defun gptel-use-gemini-flash ()
+  "Select Gemini 1.5 Flash model."
+  (interactive)
+  (setq gptel-backend gptel-litellm-openai)
+  (setq gptel-model "gemini-1.5-flash")
+  (setq gptel-stream t)
+  (message "Selected: Gemini 1.5 Flash via LiteLLM"))
 
 ;; ============================================================================
 ;; Model Availability Check
@@ -353,9 +391,19 @@ Optional LIMIT argument specifies how many records to show (default 20)."
 (setq gptel-model "gpt-4o-mini")  ; Start with mini as it's cheaper
 (setq gptel-stream t)
 
-;; Key bindings
+;; Key bindings - OpenAI
 (global-set-key (kbd "C-c o g") #'gptel-use-gpt4o)
 (global-set-key (kbd "C-c o m") #'gptel-use-gpt4o-mini)
+
+;; Key bindings - Anthropic
+(global-set-key (kbd "C-c a s") #'gptel-use-claude-sonnet)
+(global-set-key (kbd "C-c a h") #'gptel-use-claude-haiku)
+
+;; Key bindings - Google
+(global-set-key (kbd "C-c g p") #'gptel-use-gemini-pro)
+(global-set-key (kbd "C-c g f") #'gptel-use-gemini-flash)
+
+;; Key bindings - Utilities
 (global-set-key (kbd "C-c o c") #'gptel-check-openai-models)
 (global-set-key (kbd "C-c o s") #'gptel-safe-send)
 (global-set-key (kbd "C-c o ?") #'gptel-show-current-config)

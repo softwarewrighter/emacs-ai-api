@@ -51,36 +51,36 @@ services:
       # REDIS_PORT: 6379
       # REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
-      - ./litellm/config-openai.yaml:/app/config.yaml:ro
+      - ./litellm/config-all-providers.yaml:/app/config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
     command: ["--config", "/app/config.yaml", "--host", "0.0.0.0", "--port", "4000"]
 
-  # Local llama.cpp server
-  llama:
-    image: ghcr.io/ggml-org/llama.cpp:server
-    container_name: llama-server
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./models:/models:ro
-    environment:
-      LLAMA_ARG_MODEL: ${LLAMA_MODEL_PATH:-/models/deepseek-coder-v2.gguf}
-      LLAMA_ARG_CTX_SIZE: ${LLAMA_CTX_SIZE:-16384}
-      LLAMA_ARG_N_PARALLEL: ${LLAMA_N_PARALLEL:-4}
-      LLAMA_ARG_PORT: 8080
-      LLAMA_ARG_ENDPOINT_METRICS: 1
-      LLAMA_ARG_HOST: 0.0.0.0
-    # For CUDA support, use the CUDA variant and add GPU resources
-    # image: ghcr.io/ggml-org/llama.cpp:server-cuda
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: [gpu]
-    #           count: 1
+  # Local llama.cpp server (disabled - using Ollama instead)
+  # llama:
+  #   image: ghcr.io/ggml-org/llama.cpp:server
+  #   container_name: llama-server
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./models:/models:ro
+  #   environment:
+  #     LLAMA_ARG_MODEL: ${LLAMA_MODEL_PATH:-/models/deepseek-coder-v2.gguf}
+  #     LLAMA_ARG_CTX_SIZE: ${LLAMA_CTX_SIZE:-16384}
+  #     LLAMA_ARG_N_PARALLEL: ${LLAMA_N_PARALLEL:-4}
+  #     LLAMA_ARG_PORT: 8080
+  #     LLAMA_ARG_ENDPOINT_METRICS: 1
+  #     LLAMA_ARG_HOST: 0.0.0.0
+  #   # For CUDA support, use the CUDA variant and add GPU resources
+  #   # image: ghcr.io/ggml-org/llama.cpp:server-cuda
+  #   # deploy:
+  #   #   resources:
+  #   #     reservations:
+  #   #       devices:
+  #   #         - capabilities: [gpu]
+  #   #           count: 1
 
   # Optional: Redis for caching and distributed budget tracking
   # redis:
