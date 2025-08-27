@@ -9,8 +9,9 @@
    ```
 
 2. **OpenAI API Key Configured**
-   - Ensure `.env.openai` contains your `OPENAI_API_KEY`
-   - LiteLLM should be restarted after adding the key
+   - Ensure `~/.env` contains your `OPENAI_API_KEY`
+   - The project `.env` should be symlinked to `~/.env`
+   - LiteLLM reads the key from the symlinked `.env` file
 
 ## Available OpenAI Models
 

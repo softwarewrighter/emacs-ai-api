@@ -294,6 +294,54 @@ Always use ASCII-safe characters in Markdown files:
 grep -P "[\x80-\xFF]" *.md
 ```
 
+## API Key Management Best Practices
+
+### The Issue
+**Problem**: Scattered API keys across multiple project-specific `.env` files leads to:
+- Duplication of secrets
+- Higher risk of accidental commits
+- Maintenance overhead when rotating keys
+- Confusion about which file contains which keys
+
+**Initial Approach**: Project had `.env`, `.env.openai`, `.env.local` files with different keys.
+
+### The Solution
+**Centralized API Key Management**: Store all API keys in `~/.env` and symlink from projects.
+
+### Implementation
+```bash
+# In ~/.env - single source of truth
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+LITELLM_MASTER_KEY=sk-local-test-key-123
+POSTGRES_PASSWORD=localtest123
+
+# In project directory - symlink
+ln -sf ~/.env .env
+```
+
+### Benefits
+1. **Security**: Keys stored outside project directories
+2. **Simplicity**: One location to update all keys
+3. **Portability**: Works across all projects
+4. **Git Safety**: Symlinks to home directory never contain actual keys
+5. **Docker Compatibility**: Docker Compose reads `.env` automatically
+
+### Proactive Prevention
+1. **Always use `~/.env`** for sensitive API keys
+2. **Create symlinks** in projects that need the keys
+3. **Never create project-specific key files** like `.env.openai` or `.env.providers`
+4. **Add to .gitignore**: Ensure `.env` is always excluded (even though it's a symlink)
+5. **Document the pattern**: Make it clear in README that keys are in `~/.env`
+
+### Docker Compose Consideration
+Docker Compose automatically reads `.env` from the project directory, making the symlink approach seamless:
+```yaml
+# No env_file directive needed - Docker finds .env automatically
+environment:
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}  # Uses value from .env symlink
+```
+
 ## Continuous Improvement
 
 Each time a new pattern of issue is discovered:

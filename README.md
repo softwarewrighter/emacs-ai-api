@@ -20,13 +20,16 @@ A comprehensive system for managing multiple LLM providers (cloud and local) thr
 # Clone and navigate to the project
 cd emacs-ai-api/llm-gateway
 
-# Copy and configure environment
-cp .env.example .env
-# Edit .env with your API keys
+# The project uses ~/.env for all API keys (centralized, secure)
+# Edit ~/.env to add your API keys:
+#   OPENAI_API_KEY=sk-...
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   DEEPSEEK_API_KEY=sk-...
+#   etc.
 
-# For OpenAI support, also create:
-cp .env.example .env.openai
-# Add OPENAI_API_KEY=sk-your-key-here to .env.openai
+# The project .env is symlinked to ~/.env automatically
+# If not, create the symlink:
+ln -sf ~/.env .env
 ```
 
 ### 2. Start LiteLLM Gateway
@@ -217,10 +220,12 @@ If usage data appears empty:
 
 ## Security Notes
 
-- Never commit `.env` files with real API keys
+- All API keys are stored in `~/.env` (outside project directory)
+- Project `.env` is a symlink to `~/.env` (never committed)
 - The `.gitignore` excludes all `.env.*` files except `.env.example`
-- Use `sk-local-test-key-123` for local development only
-- Keep your OpenAI API key secure and rotate if exposed
+- Use `sk-local-test-key-123` for local LiteLLM master key
+- Keep your API keys secure and rotate if exposed
+- One central location (`~/.env`) for all your API keys across projects
 
 ## License
 
