@@ -79,6 +79,7 @@
   (interactive)
   (let ((buffer (get-buffer-create "*Ollama Endpoints*")))
     (with-current-buffer buffer
+      (read-only-mode -1)  ; Disable read-only first
       (erase-buffer)
       (insert "Available Endpoints\n")
       (insert "═══════════════════\n\n")
@@ -135,6 +136,7 @@
         (message "No models found at %s" gptel-current-endpoint-name)
       (let ((buffer (get-buffer-create "*Available Models*")))
         (with-current-buffer buffer
+          (read-only-mode -1)  ; Disable read-only first
           (erase-buffer)
           (insert (format "Models at %s\n" gptel-current-endpoint-name))
           (insert "══════════════════════════\n\n")
@@ -153,7 +155,7 @@
           (when (member "deepseek-r1:14b" gptel-available-models)
             (insert "  C-c g s d - deepseek-r1:14b\n"))
           (insert "  C-c g s s - select from list\n")
-          (read-only-mode 1)
+          (read-only-mode 1)  ; Re-enable read-only
           (goto-char (point-min)))
         (display-buffer buffer)))))
 

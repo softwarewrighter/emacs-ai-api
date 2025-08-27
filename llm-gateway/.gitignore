@@ -1,0 +1,25 @@
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Temporary and test files
+*.log
+test-output/
+tmp/
+
+# Editor files
+.vscode/
+.idea/
+*~
+\#*#
+
+# Python
+__pycache__/
+*.pyc
+
+# Node (if added later)
+node_modules/
+
+# OS files
+.DS_Store

@@ -1,0 +1,61 @@
+# LiteLLM Configuration with OpenAI
+# Uses full config.yaml but requires OPENAI_API_KEY to be set
+
+general_settings:
+  master_key: sk-local-test-key-123  # or use os.environ/LITELLM_MASTER_KEY
+  database_url: postgresql://litellm:localtest123@postgres:5432/litellm
+  ui: true
+
+litellm_settings:
+  drop_params: true
+  
+model_list:
+  # Local Models via Ollama on localhost
+  - model_name: llama3.2:latest
+    litellm_params:
+      model: ollama/llama3.2:latest
+      api_base: http://host.docker.internal:11434
+      
+  - model_name: qwen2.5-coder:14b
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://host.docker.internal:11434
+      
+  # Remote Models via Ollama on big72
+  - model_name: qwen2.5:7b
+    litellm_params:
+      model: ollama/qwen2.5:7b
+      api_base: http://big72.local:11434
+      
+  - model_name: mistral:latest
+    litellm_params:
+      model: ollama/mistral:latest
+      api_base: http://big72.local:11434
+  
+  # OpenAI Models (requires OPENAI_API_KEY)
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+      
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+      
+  - model_name: gpt-4-turbo
+    litellm_params:
+      model: openai/gpt-4-turbo
+      api_key: os.environ/OPENAI_API_KEY
+      
+  # Note: o1-preview and o1-mini require special access
+  # Uncomment these lines only if you have access:
+  # - model_name: o1-preview
+  #   litellm_params:
+  #     model: openai/o1-preview
+  #     api_key: os.environ/OPENAI_API_KEY
+  #     
+  # - model_name: o1-mini
+  #   litellm_params:
+  #     model: openai/o1-mini
+  #     api_key: os.environ/OPENAI_API_KEY

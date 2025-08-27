@@ -256,6 +256,44 @@ While fixing this, also added:
 - Append mode with timestamp separator for existing learnings files
 - This ensures knowledge is propagated to projects using the tool
 
+## Markdown File Character Encoding Issues
+
+### The Issue
+**Bug**: Using special Unicode characters (smart quotes, em dashes, etc.) in Markdown files causes GitHub to fail parsing and display raw formatting codes instead of rendered content.
+
+**Examples of problematic characters**:
+- Smart quotes: "" '' (U+201C, U+201D, U+2018, U+2019)
+- Em dash: — (U+2014)
+- En dash: – (U+2013)
+- Ellipsis: … (U+2026)
+- Non-breaking spaces and other invisible Unicode
+
+**Impact**: README.md and other documentation appears broken on GitHub, showing the underlying Markdown syntax rather than formatted content.
+
+### Root Cause
+Some text editors or copy-paste operations introduce "smart" typography characters that look correct in the editor but break GitHub's Markdown parser.
+
+### The Fix
+Always use ASCII-safe characters in Markdown files:
+- Use straight quotes: " and '
+- Use double hyphen for em dash: --
+- Use single hyphen for en dash: -
+- Use three periods for ellipsis: ...
+- Avoid any non-ASCII characters unless absolutely necessary
+
+### Proactive Prevention
+1. **Always use plain text editors** for Markdown files
+2. **Avoid copy-paste** from word processors or web pages
+3. **Check for Unicode**: Use `file -I` command to verify encoding
+4. **Test on GitHub**: Preview changes before committing
+5. **Use ASCII alternatives**: Stick to basic ASCII characters for all formatting
+
+### Detection Command
+```bash
+# Check for non-ASCII characters in Markdown files
+grep -P "[\x80-\xFF]" *.md
+```
+
 ## Continuous Improvement
 
 Each time a new pattern of issue is discovered:
