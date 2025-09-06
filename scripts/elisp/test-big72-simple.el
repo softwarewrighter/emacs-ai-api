@@ -36,7 +36,12 @@
                      (message-obj (cdr (assoc 'message first-choice)))
                      (content (cdr (assoc 'content message-obj))))
                 (kill-buffer response-buffer)
-                (message "Response: %s" content)
+                (message "")
+                (message "Response received:")
+                (message "----------------------------------------")
+                (message "%s" content)
+                (message "----------------------------------------")
+                (message "")
                 (message "✓ Test PASSED for big72.local (qwen2.5:7b)")
                 0)
             (error
