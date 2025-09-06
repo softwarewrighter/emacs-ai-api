@@ -12,8 +12,9 @@ echo -e "${BLUE}Testing Emacs with big72.local Ollama${NC}"
 echo "======================================"
 echo ""
 
-# Create temporary elisp test file
-TEMP_EL=$(mktemp /tmp/test-big72-XXXX.el)
+# Create temporary elisp test file (macOS compatible)
+TEMP_EL=$(mktemp -t test-big72).el
+mv $(echo $TEMP_EL | sed 's/.el$//') $TEMP_EL
 
 cat > "$TEMP_EL" <<'EOF'
 ;;; Test big72.local Ollama via LiteLLM
@@ -25,41 +26,56 @@ cat > "$TEMP_EL" <<'EOF'
 (require 'package)
 (package-initialize)
 
-;; Load gptel if available, otherwise define minimal version
-(unless (require 'gptel nil t)
-  ;; Minimal gptel mock for testing
-  (defvar gptel-model nil)
-  (defvar gptel-api-key "sk-local-test-key-123")
+;; Load gptel and configure for LiteLLM
+(if (require 'gptel nil t)
+    ;; Use real gptel with LiteLLM backend
+    (progn
+      (require 'gptel-openai)
+      
+      ;; Create LiteLLM backend
+      (defvar gptel-litellm
+        (gptel-make-openai "LiteLLM"
+          :host "localhost:4000"
+          :protocol "http"
+          :endpoint "/v1/chat/completions"
+          :key "sk-local-test-key-123"
+          :models '("qwen2.5:7b")))
+      
+      ;; Set as default
+      (setq gptel-backend gptel-litellm)
+      (setq gptel-model "qwen2.5:7b"))
   
-  (defun gptel-request (prompt &rest args)
-    "Make a test request."
-    (let* ((url "http://localhost:4000/v1/chat/completions")
-           (url-request-method "POST")
-           (url-request-extra-headers
-            `(("Content-Type" . "application/json")
-              ("Authorization" . ,(concat "Bearer " gptel-api-key))))
-           (url-request-data
-            (json-encode
-             `((model . ,gptel-model)
-               (messages . [((role . "user") (content . ,prompt))])
-               (max_tokens . 100)
-               (temperature . 0.7))))
-           (response-buffer (url-retrieve-synchronously url nil t 10)))
-      (when response-buffer
-        (with-current-buffer response-buffer
-          (goto-char (point-min))
-          (re-search-forward "^$" nil t)
-          (forward-char)
-          (let* ((json-response (json-read))
-                 (choices (cdr (assoc 'choices json-response)))
-                 (first-choice (aref choices 0))
-                 (message-obj (cdr (assoc 'message first-choice)))
-                 (content (cdr (assoc 'content message-obj))))
-            (kill-buffer response-buffer)
-            content))))))
-
-;; Configure for big72.local
-(setq gptel-model "big72-default")
+  ;; Fallback: minimal gptel mock for testing
+  (progn
+    (defvar gptel-model "qwen2.5:7b")
+    (defvar gptel-api-key "sk-local-test-key-123")
+    
+    (defun gptel-request (prompt &rest args)
+      "Make a test request."
+      (let* ((url "http://localhost:4000/v1/chat/completions")
+             (url-request-method "POST")
+             (url-request-extra-headers
+              `(("Content-Type" . "application/json")
+                ("Authorization" . ,(concat "Bearer " gptel-api-key))))
+             (url-request-data
+              (json-encode
+               `((model . ,gptel-model)
+                 (messages . [((role . "user") (content . ,prompt))])
+                 (max_tokens . 100)
+                 (temperature . 0.7))))
+             (response-buffer (url-retrieve-synchronously url nil t 10)))
+        (when response-buffer
+          (with-current-buffer response-buffer
+            (goto-char (point-min))
+            (re-search-forward "^$" nil t)
+            (forward-char)
+            (let* ((json-response (json-read))
+                   (choices (cdr (assoc 'choices json-response)))
+                   (first-choice (aref choices 0))
+                   (message-obj (cdr (assoc 'message first-choice)))
+                   (content (cdr (assoc 'content message-obj))))
+              (kill-buffer response-buffer)
+              content))))))
 
 ;; Test function
 (defun test-big72-ollama ()
@@ -73,7 +89,35 @@ cat > "$TEMP_EL" <<'EOF'
     (message "Prompt: %s" prompt)
     (message "")
     (condition-case err
-        (let ((response (gptel-request prompt)))
+        (let ((response 
+               (if (fboundp 'gptel-request)
+                   ;; Use our mock function
+                   (gptel-request prompt)
+                 ;; Use real gptel - make synchronous request
+                 (let* ((url "http://localhost:4000/v1/chat/completions")
+                        (url-request-method "POST")
+                        (url-request-extra-headers
+                         `(("Content-Type" . "application/json")
+                           ("Authorization" . "Bearer sk-local-test-key-123")))
+                        (url-request-data
+                         (json-encode
+                          `((model . ,gptel-model)
+                            (messages . [((role . "user") (content . ,prompt))])
+                            (max_tokens . 100)
+                            (temperature . 0.7))))
+                        (response-buffer (url-retrieve-synchronously url nil t 10)))
+                   (when response-buffer
+                     (with-current-buffer response-buffer
+                       (goto-char (point-min))
+                       (re-search-forward "^$" nil t)
+                       (forward-char)
+                       (let* ((json-response (json-read))
+                              (choices (cdr (assoc 'choices json-response)))
+                              (first-choice (aref choices 0))
+                              (message-obj (cdr (assoc 'message first-choice)))
+                              (content (cdr (assoc 'content message-obj))))
+                         (kill-buffer response-buffer)
+                         content)))))))
           (if response
               (progn
                 (message "Response received:")
