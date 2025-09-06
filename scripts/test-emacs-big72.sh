@@ -6,158 +6,51 @@ set -euo pipefail
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${BLUE}Testing Emacs with big72.local Ollama${NC}"
 echo "======================================"
 echo ""
 
-# Create temporary elisp test file (macOS compatible)
-TEMP_EL=$(mktemp -t test-big72).el
-mv $(echo $TEMP_EL | sed 's/.el$//') $TEMP_EL
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+ELISP_FILE="$SCRIPT_DIR/elisp/test-big72-ollama.el"
 
-cat > "$TEMP_EL" <<'EOF'
-;;; Test big72.local Ollama via LiteLLM
+# Validate elisp file first
+if [ -f "$SCRIPT_DIR/validate_elisp.sh" ]; then
+    echo "Validating elisp file..."
+    if "$SCRIPT_DIR/validate_elisp.sh" "$ELISP_FILE" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Elisp validation passed${NC}"
+    else
+        echo -e "${RED}✗ Elisp validation failed${NC}"
+        exit 1
+    fi
+fi
 
-;; Add paths
-(add-to-list 'load-path (expand-file-name "llm-gateway/emacs" default-directory))
-
-;; Minimal gptel setup
-(require 'package)
-(package-initialize)
-
-;; Load gptel and configure for LiteLLM
-(if (require 'gptel nil t)
-    ;; Use real gptel with LiteLLM backend
-    (progn
-      (require 'gptel-openai)
-      
-      ;; Create LiteLLM backend
-      (defvar gptel-litellm
-        (gptel-make-openai "LiteLLM"
-          :host "localhost:4000"
-          :protocol "http"
-          :endpoint "/v1/chat/completions"
-          :key "sk-local-test-key-123"
-          :models '("qwen2.5:7b")))
-      
-      ;; Set as default
-      (setq gptel-backend gptel-litellm)
-      (setq gptel-model "qwen2.5:7b"))
-  
-  ;; Fallback: minimal gptel mock for testing
-  (progn
-    (defvar gptel-model "qwen2.5:7b")
-    (defvar gptel-api-key "sk-local-test-key-123")
-    
-    (defun gptel-request (prompt &rest args)
-      "Make a test request."
-      (let* ((url "http://localhost:4000/v1/chat/completions")
-             (url-request-method "POST")
-             (url-request-extra-headers
-              `(("Content-Type" . "application/json")
-                ("Authorization" . ,(concat "Bearer " gptel-api-key))))
-             (url-request-data
-              (json-encode
-               `((model . ,gptel-model)
-                 (messages . [((role . "user") (content . ,prompt))])
-                 (max_tokens . 100)
-                 (temperature . 0.7))))
-             (response-buffer (url-retrieve-synchronously url nil t 10)))
-        (when response-buffer
-          (with-current-buffer response-buffer
-            (goto-char (point-min))
-            (re-search-forward "^$" nil t)
-            (forward-char)
-            (let* ((json-response (json-read))
-                   (choices (cdr (assoc 'choices json-response)))
-                   (first-choice (aref choices 0))
-                   (message-obj (cdr (assoc 'message first-choice)))
-                   (content (cdr (assoc 'content message-obj))))
-              (kill-buffer response-buffer)
-              content))))))
-
-;; Test function
-(defun test-big72-ollama ()
-  "Test big72.local Ollama model."
-  (message "Testing model: %s" gptel-model)
-  (message "API endpoint: http://localhost:4000/v1")
-  (message "Actual backend: http://big72.local:11434")
-  (message "")
-  
-  (let ((prompt "Write a one-line bash command to list files."))
-    (message "Prompt: %s" prompt)
-    (message "")
-    (condition-case err
-        (let ((response 
-               (if (fboundp 'gptel-request)
-                   ;; Use our mock function
-                   (gptel-request prompt)
-                 ;; Use real gptel - make synchronous request
-                 (let* ((url "http://localhost:4000/v1/chat/completions")
-                        (url-request-method "POST")
-                        (url-request-extra-headers
-                         `(("Content-Type" . "application/json")
-                           ("Authorization" . "Bearer sk-local-test-key-123")))
-                        (url-request-data
-                         (json-encode
-                          `((model . ,gptel-model)
-                            (messages . [((role . "user") (content . ,prompt))])
-                            (max_tokens . 100)
-                            (temperature . 0.7))))
-                        (response-buffer (url-retrieve-synchronously url nil t 10)))
-                   (when response-buffer
-                     (with-current-buffer response-buffer
-                       (goto-char (point-min))
-                       (re-search-forward "^$" nil t)
-                       (forward-char)
-                       (let* ((json-response (json-read))
-                              (choices (cdr (assoc 'choices json-response)))
-                              (first-choice (aref choices 0))
-                              (message-obj (cdr (assoc 'message first-choice)))
-                              (content (cdr (assoc 'content message-obj))))
-                         (kill-buffer response-buffer)
-                         content)))))))
-          (if response
-              (progn
-                (message "Response received:")
-                (message "----------------------------------------")
-                (message "%s" response)
-                (message "----------------------------------------")
-                (message "✓ Test PASSED for big72.local Ollama")
-                (kill-emacs 0))
-            (message "✗ No response received")
-            (kill-emacs 1)))
-      (error
-       (message "✗ Test FAILED: %s" (error-message-string err))
-       (kill-emacs 1)))))
-
-;; Run test
-(test-big72-ollama)
-EOF
-
-# Change to project directory
-cd "$(dirname "$0")/.."
+# Check if elisp file exists
+if [ ! -f "$ELISP_FILE" ]; then
+    echo -e "${RED}Error: Elisp file not found: $ELISP_FILE${NC}"
+    exit 1
+fi
 
 # Run Emacs in batch mode
 echo -e "${BLUE}Running Emacs batch test...${NC}"
 echo ""
 
 emacs -Q --batch \
-      --eval "(setq default-directory \"$(pwd)/\")" \
-      -l "$TEMP_EL" 2>&1
+      --eval "(setq default-directory \"$PROJECT_ROOT/\")" \
+      -l "$ELISP_FILE" 2>&1
 
 EXIT_CODE=$?
-
-# Clean up
-rm -f "$TEMP_EL"
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo ""
     echo -e "${GREEN}✓ big72.local test completed successfully${NC}"
 else
     echo ""
-    echo -e "✗ big72.local test failed"
+    echo -e "${RED}✗ big72.local test failed (exit code: $EXIT_CODE)${NC}"
 fi
 
 exit $EXIT_CODE
