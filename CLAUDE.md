@@ -83,6 +83,8 @@ Co-authored-by: Claude <claude@anthropic.com>"
 git push origin main  # or appropriate branch
 ```
 
+**CRITICAL RULE**: `git push` can ONLY be executed as part of the checkpoint process or with explicit user approval. Never push changes outside of a checkpoint.
+
 **Commit Message Format Requirements:**
 1. **First line**: Short summary, 50 characters or less
 2. **Second line**: MUST be blank

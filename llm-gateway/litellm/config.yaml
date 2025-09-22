@@ -128,25 +128,25 @@ model_list:
       max_budget: 5.0
       budget_duration: 1d
   
-  # Google Gemini Models
+  # Google Gemini Models (supports both GEMINI_API_KEY and GOOGLE_API_KEY)
   - model_name: gemini-1.5-pro
     litellm_params:
-      model: vertex_ai/gemini-1.5-pro-002
-      api_key: os.environ/GOOGLE_API_KEY
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
       max_budget: 8.0
       budget_duration: 1d
-  
+
   - model_name: gemini-1.5-flash
     litellm_params:
-      model: vertex_ai/gemini-1.5-flash-002
-      api_key: os.environ/GOOGLE_API_KEY
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
       max_budget: 3.0
       budget_duration: 1d
-  
+
   - model_name: gemini-2.0-flash-exp
     litellm_params:
-      model: vertex_ai/gemini-2.0-flash-exp
-      api_key: os.environ/GOOGLE_API_KEY
+      model: gemini/gemini-2.0-flash-exp
+      api_key: os.environ/GEMINI_API_KEY
       max_budget: 5.0
       budget_duration: 1d
   
@@ -231,8 +231,8 @@ model_list:
       api_key: os.environ/ANTHROPIC_API_KEY
   - model_name: coding-balanced
     litellm_params:
-      model: vertex_ai/gemini-1.5-flash-002
-      api_key: os.environ/GOOGLE_API_KEY
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
   - model_name: coding-balanced
     litellm_params:
       model: deepseek/deepseek-coder
@@ -257,8 +257,8 @@ model_list:
       api_base: https://api.deepseek.com/v1
   - model_name: coding-cheap
     litellm_params:
-      model: vertex_ai/gemini-1.5-flash-002
-      api_key: os.environ/GOOGLE_API_KEY
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
   
   # Auto-router (mix of all available)
   - model_name: coding-auto
@@ -271,8 +271,8 @@ model_list:
       api_key: os.environ/ANTHROPIC_API_KEY
   - model_name: coding-auto
     litellm_params:
-      model: vertex_ai/gemini-1.5-pro-002
-      api_key: os.environ/GOOGLE_API_KEY
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
   - model_name: coding-auto
     litellm_params:
       model: deepseek/deepseek-coder

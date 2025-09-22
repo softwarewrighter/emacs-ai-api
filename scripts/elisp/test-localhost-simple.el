@@ -1,10 +1,9 @@
-;;; test-big72-simple.el --- Simple test for big72 via LiteLLM -*- lexical-binding: t -*-
+;;; test-localhost-simple.el --- Simple test for localhost Ollama via LiteLLM -*- lexical-binding: t -*-
 
 ;;; Commentary:
-;; Purpose: Verify that big72.local Ollama models are accessible through LiteLLM
-;; This test makes a simple synchronous API call to ensure the entire pipeline works:
-;;   Emacs -> LiteLLM (localhost:4000) -> Ollama (big72.local:11434) -> Model response
-;; This bypasses gptel's async machinery for easier batch testing and debugging
+;; Purpose: Verify that localhost Ollama models are accessible through LiteLLM
+;; This test makes a simple synchronous API call to ensure the pipeline works:
+;;   Emacs -> LiteLLM (localhost:4000) -> Ollama (localhost:11434) -> Model response
 
 ;;; Code:
 
@@ -12,15 +11,15 @@
 (require 'json)
 
 (defun test-litellm-api ()
-  "Test LiteLLM API directly with big72 model."
-  (let* ((test-prompt "Write a one-line bash command to list files.")
+  "Test LiteLLM API directly with localhost model."
+  (let* ((test-prompt "Write a one-line Python function to add two numbers.")
          (url "http://localhost:4000/v1/chat/completions")
          (url-request-method "POST")
          (url-request-extra-headers
           '(("Content-Type" . "application/json")
             ("Authorization" . "Bearer sk-local-test-key-123")))
          (request-data
-          `((model . "qwen2.5:7b")
+          `((model . "llama3.2:latest")  ; Use actual model name
             (messages . [((role . "user") (content . ,test-prompt))])
             (max_tokens . 100)
             (temperature . 0.7)))
@@ -43,7 +42,7 @@
                 (message "")
                 (message "Request sent:")
                 (message "----------------------------------------")
-                (message "Model: qwen2.5:7b")
+                (message "Model: llama3.2:latest")
                 (message "Prompt: %s" test-prompt)
                 (message "----------------------------------------")
                 (message "")
@@ -52,7 +51,7 @@
                 (message "%s" content)
                 (message "----------------------------------------")
                 (message "")
-                (message "✓ Test PASSED for big72.local (qwen2.5:7b)")
+                (message "✓ Test PASSED for localhost Ollama (llama3.2:latest)")
                 0)
             (error
              (message "✗ Failed to parse response: %s" (error-message-string err))
@@ -64,15 +63,15 @@
 
 ;; Run the test
 (message "========================================")
-(message "Purpose: Verify big72.local Ollama connectivity through LiteLLM")
+(message "Purpose: Verify localhost Ollama connectivity through LiteLLM")
 (message "========================================")
 (message "")
 (message "Testing pipeline:")
-(message "  Emacs -> LiteLLM (localhost:4000) -> Ollama (big72.local:11434)")
+(message "  Emacs -> LiteLLM (localhost:4000) -> Ollama (localhost:11434)")
 (message "")
 
 (let ((result (test-litellm-api)))
   (kill-emacs result))
 
-(provide 'test-big72-simple)
-;;; test-big72-simple.el ends here
+(provide 'test-localhost-simple)
+;;; test-localhost-simple.el ends here

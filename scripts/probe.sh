@@ -1,13 +1,65 @@
 #!/usr/bin/env bash
 # Generic probe script for testing any OpenAI-compatible API endpoint
-# Usage: BASE=http://host:port/v1 MODEL=model-name ./probe.sh
 
 set -euo pipefail
 
+# Help function
+show_help() {
+    cat << EOF
+PURPOSE:
+    Test any OpenAI-compatible API endpoint with a simple prompt.
+    Useful for verifying LiteLLM gateway connectivity and model availability.
+
+USAGE:
+    $0 [MODEL_NAME]
+    $0 -h | --help
+
+ARGUMENTS:
+    MODEL_NAME    Optional model name (default: llama3.2:latest)
+
+ENVIRONMENT VARIABLES:
+    BASE          API base URL (default: http://localhost:4000/v1)
+    KEY           API key (default: sk-local-test-key-123)
+    MODEL         Model name (overrides positional argument)
+    PROMPT        Custom prompt to send
+    MAX_TOKENS    Maximum tokens in response (default: 256)
+    TEMPERATURE   Temperature for generation (default: 0.7)
+    STREAM        Enable streaming (default: false)
+    VERBOSE       Show detailed output (default: false)
+
+EXAMPLES:
+    # Test default model
+    $0
+
+    # Test specific model
+    $0 gpt-4o-mini
+
+    # Test with custom endpoint
+    BASE=http://api.openai.com/v1 KEY=sk-... $0 gpt-4
+
+    # Verbose mode with custom prompt
+    VERBOSE=true PROMPT="Hello" $0 qwen2.5:7b
+
+EOF
+    exit 0
+}
+
+# Check for help flag
+if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+    show_help
+fi
+
+# Accept model as first argument, or use environment variable, or default
+if [[ -n "${1:-}" ]]; then
+    MODEL_ARG="$1"
+else
+    MODEL_ARG=""
+fi
+
 # Configuration with defaults
 BASE="${BASE:-http://localhost:4000/v1}"
-KEY="${KEY:-${LITELLM_MASTER_KEY:-${LITELLM_VIRTUAL_KEY:-sk-local}}}"
-MODEL="${MODEL:-coding-auto}"
+KEY="${KEY:-${LITELLM_MASTER_KEY:-${LITELLM_VIRTUAL_KEY:-sk-local-test-key-123}}}"
+MODEL="${MODEL:-${MODEL_ARG:-llama3.2:latest}}"
 PROMPT="${PROMPT:-Write a one-line Python function to calculate factorial.}"
 MAX_TOKENS="${MAX_TOKENS:-256}"
 TEMPERATURE="${TEMPERATURE:-0.7}"

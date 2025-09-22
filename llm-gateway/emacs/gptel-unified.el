@@ -13,6 +13,47 @@
 (require 'json)
 
 ;; ============================================================================
+;; Environment Variable Support
+;; ============================================================================
+
+(defun gptel-unified-load-env-file (&optional env-file)
+  "Load environment variables from ENV-FILE (defaults to ~/.env).
+Returns an alist of (VAR . VALUE) pairs."
+  (let ((file (expand-file-name (or env-file "~/.env")))
+        (env-vars '()))
+    (when (file-exists-p file)
+      (with-temp-buffer
+        (insert-file-contents file)
+        (goto-char (point-min))
+        (while (not (eobp))
+          ;; Skip comments and empty lines
+          (cond
+           ((looking-at "^\\s-*#.*$") nil)  ; Comment line
+           ((looking-at "^\\s-*$") nil)      ; Empty line
+           ((looking-at "^\\([A-Za-z_][A-Za-z0-9_]*\\)=\\(.*\\)$")
+            (let ((var (match-string 1))
+                  (val (match-string 2)))
+              ;; Trim whitespace
+              (setq val (string-trim val))
+              ;; Remove surrounding quotes if present
+              (when (string-match "^[\"']\\(.*\\)[\"']$" val)
+                (setq val (match-string 1 val)))
+              (push (cons var val) env-vars))))
+          (forward-line 1))))
+    (nreverse env-vars)))
+
+(defun gptel-unified-get-env (var &optional default)
+  "Get environment variable VAR from ~/.env or system env.
+Falls back to DEFAULT if not found."
+  (or
+   ;; First try ~/.env file
+   (cdr (assoc var (gptel-unified-load-env-file)))
+   ;; Then try system environment
+   (getenv var)
+   ;; Finally use default
+   default))
+
+;; ============================================================================
 ;; Core Variables
 ;; ============================================================================
 
@@ -22,16 +63,51 @@
 (defvar gptel-unified-backend nil
   "The unified LiteLLM backend.")
 
+(defvar gptel-unified-litellm-key nil
+  "API key for LiteLLM, loaded from environment.")
+
+(defvar gptel-unified-litellm-host nil
+  "Host for LiteLLM, loaded from environment.")
+
+;; ============================================================================
+;; Configuration Loading
+;; ============================================================================
+
+(defun gptel-unified-load-config ()
+  "Load configuration from environment variables."
+  (setq gptel-unified-litellm-key
+        (gptel-unified-get-env "LITELLM_KEY" "sk-local-test-key-123"))
+  (setq gptel-unified-litellm-host
+        (gptel-unified-get-env "LITELLM_HOST" "localhost:4000")))
+
+(defun gptel-unified-debug-env ()
+  "Debug environment variable loading."
+  (interactive)
+  (let ((env-vars (gptel-unified-load-env-file)))
+    (with-output-to-temp-buffer "*ENV Debug*"
+      (princ "Environment variables from ~/.env:\n")
+      (princ "===================================\n\n")
+      (if env-vars
+          (dolist (pair env-vars)
+            (princ (format "%s = %s\n" (car pair) (cdr pair))))
+        (princ "No environment variables found in ~/.env\n"))
+      (princ "\n\nCurrent configuration:\n")
+      (princ "======================\n")
+      (princ (format "LITELLM_HOST: %s\n" gptel-unified-litellm-host))
+      (princ (format "LITELLM_KEY: %s\n" gptel-unified-litellm-key))
+      (princ "\nNote: Check for typos or extra characters in your ~/.env file"))))
+
 ;; ============================================================================
 ;; Model Discovery
 ;; ============================================================================
 
 (defun gptel-unified-discover-models ()
   "Discover all available models from LiteLLM."
-  (let ((url "http://localhost:4000/v1/models")
+  (gptel-unified-load-config)  ;; Ensure config is loaded
+  (let ((url (format "http://%s/v1/models" gptel-unified-litellm-host))
         (url-request-method "GET")
-        (url-request-extra-headers 
-         '(("Authorization" . "Bearer sk-local-test-key-123"))))
+        (url-request-extra-headers
+         `(("Authorization" . ,(format "Bearer %s" gptel-unified-litellm-key)))))
     (condition-case err
         (with-current-buffer (url-retrieve-synchronously url nil t 5)
           (goto-char (point-min))
@@ -46,20 +122,23 @@
 (defun gptel-unified-refresh ()
   "Refresh the backend with discovered models."
   (interactive)
+  (gptel-unified-load-config)  ;; Reload config in case ~/.env changed
   (let ((models (gptel-unified-discover-models)))
     (if models
         (progn
           (setq gptel-unified-backend
                 (gptel-make-openai "LiteLLM"
-                  :host "localhost:4000"
+                  :host gptel-unified-litellm-host
                   :endpoint "/v1/chat/completions"
                   :protocol "http"
-                  :key "sk-local-test-key-123"
+                  :key gptel-unified-litellm-key
                   :stream t
                   :models models))
           (setq gptel-backend gptel-unified-backend)
-          (message "Discovered %d models" (length models)))
-      (message "Failed to discover models. Check LiteLLM connection."))))
+          (message "Discovered %d models (host: %s)"
+                   (length models) gptel-unified-litellm-host))
+      (message "Failed to discover models. Check LiteLLM connection at %s"
+               gptel-unified-litellm-host))))
 
 ;; ============================================================================
 ;; Model Selection
@@ -96,10 +175,11 @@
 
 (defun gptel-unified-fetch-usage ()
   "Fetch usage data from LiteLLM."
-  (let ((url "http://localhost:4000/spend/logs")
+  (gptel-unified-load-config)  ;; Ensure config is loaded
+  (let ((url (format "http://%s/spend/logs" gptel-unified-litellm-host))
         (url-request-method "GET")
-        (url-request-extra-headers 
-         '(("Authorization" . "Bearer sk-local-test-key-123"))))
+        (url-request-extra-headers
+         `(("Authorization" . ,(format "Bearer %s" gptel-unified-litellm-key)))))
     (condition-case nil
         (with-current-buffer (url-retrieve-synchronously url nil t 10)
           (goto-char (point-min))
@@ -181,15 +261,15 @@
       
       (insert "KEY BINDINGS:\n\n")
       (insert "Model Selection:\n")
-      (insert "  C-c C-m    - Select any model (with completion)\n")
-      (insert "  C-c C-1    - Quick: Best quality (Claude/GPT-4o)\n")
-      (insert "  C-c C-2    - Quick: Fast/cheap (Haiku/GPT-4o-mini)\n")
-      (insert "  C-c C-3    - Quick: Local (Ollama models)\n\n")
-      
+      (insert "  C-c m      - Select any model (with completion)\n")
+      (insert "  C-c 1      - Quick: Best quality (Claude/GPT-4o)\n")
+      (insert "  C-c 2      - Quick: Fast/cheap (Haiku/GPT-4o-mini)\n")
+      (insert "  C-c 3      - Quick: Local (Ollama models)\n\n")
+
       (insert "Sending Text:\n")
       (insert "  C-c RET    - Send buffer/paragraph at point\n")
       (insert "  C-c C-SPC  - Send selected region\n")
-      (insert "  C-c C-n    - Open new chat buffer\n\n")
+      (insert "  C-c n      - Open new chat buffer\n\n")
       
       (insert "Utilities:\n")
       (insert "  C-c C-h    - This help\n")
@@ -253,19 +333,19 @@
 ;; Key Bindings - ALL commands use C-c C-<key> pattern
 ;; ============================================================================
 
-;; Model selection
-(global-set-key (kbd "C-c C-m") #'gptel-unified-select-model)
-(global-set-key (kbd "C-c C-1") (lambda () (interactive) 
+;; Model selection - use C-c m instead of C-c C-m to avoid conflicts
+(global-set-key (kbd "C-c m") #'gptel-unified-select-model)
+(global-set-key (kbd "C-c 1") (lambda () (interactive)
                                   (gptel-unified-quick-select "claude-3-5-sonnet\\|gpt-4o$" "best")))
-(global-set-key (kbd "C-c C-2") (lambda () (interactive) 
+(global-set-key (kbd "C-c 2") (lambda () (interactive)
                                   (gptel-unified-quick-select "haiku\\|gpt-4o-mini\\|flash" "fast")))
-(global-set-key (kbd "C-c C-3") (lambda () (interactive) 
+(global-set-key (kbd "C-c 3") (lambda () (interactive)
                                   (gptel-unified-quick-select "llama\\|qwen\\|mistral" "local")))
 
 ;; Sending
 (global-set-key (kbd "C-c RET") #'gptel-send)
 (global-set-key (kbd "C-c C-SPC") #'gptel-send-region)
-(global-set-key (kbd "C-c C-n") #'gptel)
+(global-set-key (kbd "C-c n") #'gptel)
 
 ;; Utilities
 (global-set-key (kbd "C-c C-h") #'gptel-unified-help)
