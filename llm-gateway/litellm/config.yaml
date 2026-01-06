@@ -6,6 +6,7 @@ general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
   ui: true
+  store_model_in_db: true
   
   # Optional alerting (uncomment to enable)
   # alerting:
@@ -127,7 +128,33 @@ model_list:
       api_base: https://api.deepseek.com/v1
       max_budget: 5.0
       budget_duration: 1d
-  
+
+  # Z.ai (Zhipu AI) Models - Using Coding Plan endpoint (quota-based, not per-token)
+  # The "secret": use /api/coding/paas/v4 instead of /api/paas/v4
+  - model_name: glm-4.7
+    litellm_params:
+      model: openai/glm-4.7
+      api_key: os.environ/ZAI_API_KEY
+      api_base: https://api.z.ai/api/coding/paas/v4
+      max_budget: 5.0
+      budget_duration: 1d
+
+  - model_name: glm-4.5-flash
+    litellm_params:
+      model: openai/glm-4.5-flash
+      api_key: os.environ/ZAI_API_KEY
+      api_base: https://api.z.ai/api/coding/paas/v4
+      max_budget: 3.0
+      budget_duration: 1d
+
+  # Z.ai metered API (pay-per-token, for comparison)
+  - model_name: glm-4.7-metered
+    litellm_params:
+      model: zai/glm-4.7
+      api_key: os.environ/ZAI_API_KEY
+      max_budget: 5.0
+      budget_duration: 1d
+
   # Google Gemini Models (supports both GEMINI_API_KEY and GOOGLE_API_KEY)
   - model_name: gemini-1.5-pro
     litellm_params:
@@ -202,7 +229,139 @@ model_list:
       api_key: sk-local
       input_cost_per_token: 0.0
       output_cost_per_token: 0.0
-  
+
+  # ========== LAN OLLAMA SERVERS ==========
+  # Manager (localhost via Docker host)
+  - model_name: manager-qwen14b
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: manager-gemma9b
+    litellm_params:
+      model: ollama/gemma2:9b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  # Big72 server
+  - model_name: big72-qwen14b
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://big72.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: big72-mistral7b
+    litellm_params:
+      model: ollama/mistral:7b
+      api_base: http://big72.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  # Curiosity server
+  - model_name: curiosity-qwen14b
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://curiosity.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: curiosity-gemma9b
+    litellm_params:
+      model: ollama/gemma2:9b
+      api_base: http://curiosity.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  # Hive server
+  - model_name: hive-qwen14b
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://hive.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  - model_name: hive-gemma9b
+    litellm_params:
+      model: ollama/gemma2:9b
+      api_base: http://hive.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  # ========== LOCAL-ONLY ROUTING (load balanced across LAN) ==========
+
+  # Local Root LLM - larger models for RLM protocol (14B+)
+  # LiteLLM will try each in order, failover if unavailable
+  - model_name: local-root
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  - model_name: local-root
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://big72.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  - model_name: local-root
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://curiosity.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  - model_name: local-root
+    litellm_params:
+      model: ollama/qwen2.5-coder:14b
+      api_base: http://hive.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
+  # Local Sub LLM - smaller models for sub-tasks (7-9B)
+  - model_name: local-sub
+    litellm_params:
+      model: ollama/gemma2:9b
+      api_base: http://host.docker.internal:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  - model_name: local-sub
+    litellm_params:
+      model: ollama/gemma2:9b
+      api_base: http://big72.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  - model_name: local-sub
+    litellm_params:
+      model: ollama/mistral:7b
+      api_base: http://curiosity.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+  - model_name: local-sub
+    litellm_params:
+      model: ollama/gemma2:9b
+      api_base: http://hive.local:11434
+      api_key: sk-local
+      input_cost_per_token: 0.0
+      output_cost_per_token: 0.0
+
   # ========== ROUTING ALIASES ==========
   # Same model_name repeated = load balancing/fallback
   

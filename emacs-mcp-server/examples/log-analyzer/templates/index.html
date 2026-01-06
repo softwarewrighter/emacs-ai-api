@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emacs Log Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .upload-box {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        h1 { color: #333; }
+        .instructions {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Emacs Log Analyzer</h1>
+
+    <div class="instructions">
+        <strong>How it works:</strong>
+        <ol>
+            <li>Upload a log file using the form below</li>
+            <li>The file is opened in your running Emacs session</li>
+            <li>Emacs can perform analysis (search, filter, highlight)</li>
+            <li>Check your Emacs window to see the results!</li>
+        </ol>
+    </div>
+
+    <p>Upload a log file - Emacs will analyze it and highlight errors</p>
+
+    <form action="/analyze" method="post" enctype="multipart/form-data">
+        <div class="upload-box">
+            <input type="file" name="logfile" accept=".txt,.log">
+        </div>
+        <button type="submit">Analyze Log</button>
+    </form>
+
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        const form = document.querySelector('form');
+        const result = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            result.style.display = 'block';
+            if (data.error) {
+                result.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+            } else {
+                result.innerHTML = `
+                    <p style="color: green;">${data.message}</p>
+                    <p><strong>File:</strong> ${data.file}</p>
+                    <p style="margin-top: 15px;"><strong>Check your Emacs instance - the log is now open!</strong></p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

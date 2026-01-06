@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emacs Remote Pair Programming</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .panel h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+            min-height: 100px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 3px;
+        }
+        h1 { color: #333; text-align: center; }
+        .info {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Remote Pair Programming with Emacs</h1>
+
+    <div class="info">
+        <strong>How it works:</strong> Both developers open this page. When one opens a file,
+        inserts text, or splits a window, the action is reflected in the shared Emacs session.
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>File Operations</h2>
+            <input type="text" id="filePath" placeholder="/path/to/file">
+            <button onclick="openFile()">Open File</button>
+
+            <h3>Window Management</h3>
+            <button onclick="splitWindow('horizontal')">Split Horizontal</button>
+            <button onclick="splitWindow('vertical')">Split Vertical</button>
+        </div>
+
+        <div class="panel">
+            <h2>Text Insertion</h2>
+            <textarea id="insertText" placeholder="Type text to insert at cursor position..."></textarea>
+            <button onclick="insertTextAtCursor()">Insert Text</button>
+
+            <div id="status" class="status" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function openFile() {
+            const path = document.getElementById('filePath').value;
+            if (!path) {
+                showStatus('Please enter a file path', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/open', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path})
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                } else {
+                    showStatus(`Opened: ${path}`, 'success');
+                }
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        async function insertTextAtCursor() {
+            const text = document.getElementById('insertText').value;
+            if (!text) {
+                showStatus('Please enter text to insert', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/insert', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text})
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                } else {
+                    showStatus(`Inserted ${text.length} characters`, 'success');
+                    document.getElementById('insertText').value = '';
+                }
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        async function splitWindow(direction) {
+            try {
+                const response = await fetch('/split', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({direction})
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                } else {
+                    showStatus(`Split window: ${direction}`, 'success');
+                }
+            } catch (error) {
+                showStatus(error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.style.display = 'block';
+            status.style.background = type === 'error' ? '#f8d7da' : '#d4edda';
+            status.textContent = message;
+        }
+    </script>
+</body>
+</html>

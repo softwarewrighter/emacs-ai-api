@@ -1,5 +1,6 @@
 # Build artifacts
-/target
+/target/
+**/target/
 dist/
 build/
 *.exe
@@ -61,9 +62,11 @@ temp/
 *.sqlite
 *.sqlite3
 *.db
+*.db-shm
+*.db-wal
 
-# Work in progress (deferred Rust implementation)
-rust-wip/
+# SQLx offline mode
+.sqlx/
 
 # LiteLLM specific
 llm-gateway/postgres-data/

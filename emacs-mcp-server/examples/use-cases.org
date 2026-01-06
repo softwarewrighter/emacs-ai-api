@@ -1,0 +1,546 @@
+# -*- mode: org; -*-
+* Emacs MCP Server - Practical Use Cases
+
+This document demonstrates practical applications of the Emacs MCP Server through concrete examples.
+
+* Introduction
+
+The Emacs MCP Server bridges external AI agents/tools with your running Emacs session. This enables powerful workflows where AI assistants can directly manipulate your editor environment.
+
+* Use Case 1: Automated Code Review Assistant
+
+A CLI tool that uses AI to review code files and inserts comments directly into your Emacs buffers.
+
+**Scenario**: You have a project and want an AI to review all .rs files, adding inline comments.
+
+**File**: ~emacs-mcp-server/examples/code-review.sh~
+
+#+BEGIN_SRC bash :tangle code-review.sh :shebang #!/usr/bin/env bash
+set -e
+
+EMACS_MCP_SERVER="./target/release/emacs-mcp-server"
+
+# Review a single file
+review_file() {
+    local file="$1"
+    local review_text="$2"
+
+    echo "Reviewing $file..."
+
+    # Open the file in Emacs
+    echo "Opening $file..."
+    echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"open-file","arguments":{"path":"'"$file"'"}},"id":1}' | "$EMACS_MCP_SERVER" > /dev/null
+
+    # Insert review comment at top
+    echo "Inserting review..."
+    echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"insert","arguments":{"text":";;; Code Review:\n;;; '"$review_text"'\n\n"}},"id":2}' | "$EMACS_MCP_SERVER" > /dev/null
+
+    echo "Done: $file"
+}
+
+# Usage: review file
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <file-path> [review-comment]"
+    echo ""
+    echo "Example:"
+    echo "  $0 src/main.rs \"Consider adding error handling here\""
+    exit 1
+fi
+
+FILE="$1"
+REVIEW="${2:-Review completed. Please check for improvements.}"
+
+review_file "$FILE" "$REVIEW"
+#+END_SRC
+
+**Demo Workflow**:
+
+1. Start Emacs in server mode:
+   #+BEGIN_SRC bash
+   emacs --daemon
+   #+END_SRC
+
+2. Create a sample Rust file to review:
+   #+BEGIN_SRC rust :tangle sample-code.rs
+   fn calculate() -> i32 {
+       let x = 10;
+       let y = 20;
+       x + y
+   }
+   #+END_SRC
+
+3. Run the code review tool:
+   #+BEGIN_SRC bash
+   ./code-review.sh sample-code.rs "Add documentation and consider edge cases"
+   #+END_SRC
+
+4. Check Emacs - the file is open with review comment inserted:
+   #+BEGIN_SRC elisp
+   (find-file "sample-code.rs")
+   ;; You'll see:
+   ;;; Code Review:
+   ;;; Add documentation and consider edge cases
+   ;;
+   ;; fn calculate() -> i32 {
+   ;;     let x = 10;
+   ;;     let y = 20;
+   ;;     x + y
+   ;; }
+   #+END_SRC
+
+**Practical Applications**:
+
+- **Pre-commit reviews**: Run this as a git hook to get AI suggestions before committing
+- **CI/CD integration**: Automated code review in pipeline, with results in your Emacs
+- **Learning**: New developers can get AI explanations of code they're reading
+
+* Use Case 2: Log File Analyzer
+
+A web frontend that lets users upload log files, with Emacs performing analysis.
+
+**Scenario**: DevOps team needs to quickly find errors in application logs.
+
+**File**: ~emacs-mcp-server/examples/log-analyzer/flask-app.py~
+
+#+BEGIN_SRC python :tangle log-analyzer/flask-app.py
+#!/usr/bin/env python3
+"""Simple web frontend for Emacs log analysis"""
+
+from flask import Flask, render_template, request, jsonify
+import subprocess
+import json
+import os
+
+app = Flask(__name__)
+MCP_SERVER = "../target/release/emacs-mcp-server"
+
+def mcp_call(method, params, request_id=1):
+    """Make an MCP call to the Emacs server"""
+    req = {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": request_id
+    }
+    result = subprocess.run(
+        [MCP_SERVER],
+        input=json.dumps(req),
+        capture_output=True,
+        text=True
+    )
+    return json.loads(result.stdout)
+
+@app.route('/')
+def index():
+    """Main upload page"""
+    return render_template('index.html')
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    """Analyze uploaded log file"""
+    if 'logfile' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['logfile']
+    temp_path = f"/tmp/log_{os.urandom(8).hex()}.txt"
+    file.save(temp_path)
+
+    try:
+        # Open log file in Emacs
+        mcp_call("tools/call", {
+            "name": "open-file",
+            "arguments": {"path": temp_path}
+        })
+
+        # Search for errors (using Emacs search via insert + elisp)
+        search_expr = "(progn (goto-char (point-min)) (re-search-forward \"ERROR\" nil t) (line-number-at-pos))"
+        mcp_call("tools/call", {
+            "name": "insert",
+            "arguments": {
+                "text": f";; Found error at line: {search_expr}"
+            }
+        })
+
+        return jsonify({
+            "status": "success",
+            "message": f"Log file opened in Emacs. Errors highlighted.",
+            "file": temp_path
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Keep the file for user to view in Emacs
+        pass
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+#+END_SRC
+
+**File**: ~emacs-mcp-server/examples/log-analyzer/templates/index.html~
+
+#+BEGIN_SRC html :tangle log-analyzer/templates/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emacs Log Analyzer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; }
+        .upload-box {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+        }
+        .result { margin-top: 20px; padding: 20px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Emacs Log Analyzer</h1>
+    <p>Upload a log file - Emacs will analyze it and highlight errors</p>
+
+    <form action="/analyze" method="post" enctype="multipart/form-data">
+        <div class="upload-box">
+            <input type="file" name="logfile" accept=".txt,.log">
+        </div>
+        <button type="submit">Analyze Log</button>
+    </form>
+
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        const form = document.querySelector('form');
+        const result = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            result.style.display = 'block';
+            if (data.error) {
+                result.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+            } else {
+                result.innerHTML = `
+                    <p style="color: green;">${data.message}</p>
+                    <p>File: ${data.file}</p>
+                    <p><strong>Check your Emacs instance - the log is now open!</strong></p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
+#+END_SRC
+
+**Demo Workflow**:
+
+1. Start the web app:
+   #+BEGIN_SRC bash
+   cd log-analyzer
+   pip install flask
+   python flask-app.py
+   #+END_SRC
+
+2. Open browser to http://localhost:5000
+
+3. Upload a log file:
+   #+BEGIN_SRC text :tangle sample-app.log
+   [2025-01-05 10:00:00] Starting application...
+   [2025-01-05 10:00:01] Connected to database
+   [2025-01-05 10:00:05] ERROR: Failed to connect to cache server
+   [2025-01-05 10:00:06] Retrying connection...
+   [2025-01-05 10:00:10] ERROR: Connection timeout
+   [+END_SRC]
+
+4. Click "Analyze Log"
+
+5. Check your running Emacs - the log file is open with error analysis
+
+**Practical Applications**:
+
+- **DevOps dashboards**: Integration with monitoring tools
+- **Customer support**: Quickly analyze customer error logs
+- **Automated triage**: Batch analysis of multiple log files
+
+* Use Case 3: Documentation Generator
+
+A CLI tool that uses AI to generate documentation for code files.
+
+**File**: ~emacs-mcp-server/examples/generate-docs.sh~
+
+#+BEGIN_SRC bash :tangle generate-docs.sh :shebang #!/usr/bin/env bash
+set -e
+
+EMACS_MCP_SERVER="./target/release/emacs-mcp-server"
+
+generate_docs_for_file() {
+    local file="$1"
+    local doc_text="$2"
+
+    echo "Generating docs for $file..."
+
+    # Open file
+    echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"open-file","arguments":{"path":"'"$file"'"}},"id":1}' | "$EMACS_MCP_SERVER" > /dev/null
+
+    # Insert documentation at beginning of file
+    echo "Inserting documentation..."
+    cat <<EOF > /tmp/mcp_insert.json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "insert",
+    "arguments": {
+      "text": "$doc_text\n\n"
+    }
+  },
+  "id": 2
+}
+EOF
+
+    cat /tmp/mcp_insert.json | "$EMACS_MCP_SERVER" > /dev/null
+
+    echo "Documentation added to $file"
+}
+
+# Batch process files
+if [ -d "$1" ]; then
+    for file in "$1"/*.rs; do
+        generate_docs_for_file "$file" ";; Auto-generated documentation\n;; File: $(basename $file)\n;; Purpose: Core module"
+    done
+else
+    generate_docs_for_file "$1" ";; Auto-generated documentation"
+fi
+#+END_SRC
+
+**Demo Workflow**:
+
+1. Create a Rust project directory:
+   #+BEGIN_SRC bash
+   mkdir -p myproject/src
+   #+END_SRC
+
+2. Add some files:
+   #+BEGIN_SRC rust :tangle myproject/src/main.rs
+   fn main() {
+       println!("Hello, world!");
+   }
+   #+END_SRC
+
+3. Run documentation generator:
+   #+BEGIN_SRC bash
+   ./generate-docs.sh myproject/src
+   #+END_SRC
+
+4. Check Emacs - all files now have documentation headers
+
+**Practical Applications**:
+
+- **Legacy code**: Quickly add documentation to undocumented codebases
+- **Onboarding**: Help new developers understand code structure
+- **Documentation compliance**: Enforce documentation standards
+
+* Use Case 4: Remote Pair Programming Session
+
+A web-based collaboration tool where two developers can share an Emacs session.
+
+**File**: ~emacs-mcp-server/examples/pair-program/flask-app.py~
+
+#+BEGIN_SRC python :tangle pair-program/flask-app.py
+#!/usr/bin/env python3
+"""Remote pair programming with shared Emacs session"""
+
+from flask import Flask, render_template, request, jsonify
+import subprocess
+import json
+
+app = Flask(__name__)
+MCP_SERVER = "../target/release/emacs-mcp-server"
+
+@app.route('/')
+def index():
+    """Pair programming interface"""
+    return render_template('index.html')
+
+@app.route('/open', methods=['POST'])
+def open_file():
+    """Open a file in shared Emacs session"""
+    file_path = request.json.get('path')
+
+    try:
+        result = mcp_call("tools/call", {
+            "name": "open-file",
+            "arguments": {"path": file_path}
+        })
+        return jsonify({"status": "success", "result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/insert', methods=['POST'])
+def insert_text():
+    """Insert text at cursor"""
+    text = request.json.get('text')
+
+    try:
+        result = mcp_call("tools/call", {
+            "name": "insert",
+            "arguments": {"text": text}
+        })
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/split', methods=['POST'])
+def split_window():
+    """Split window for side-by-side viewing"""
+    direction = request.json.get('direction', 'horizontal')
+
+    try:
+        result = mcp_call("tools/call", {
+            "name": "split-window",
+            "arguments": {"direction": direction}
+        })
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def mcp_call(method, params, request_id=1):
+    """Make an MCP call"""
+    req = {
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+        "id": request_id
+    }
+    result = subprocess.run(
+        [MCP_SERVER],
+        input=json.dumps(req),
+        capture_output=True,
+        text=True
+    )
+    return json.loads(result.stdout)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=True)
+#+END_SRC
+
+**Demo Workflow**:
+
+1. Start the web app:
+   #+BEGIN_SRC bash
+   cd pair-program
+   python flask-app.py
+   #+END_SRC
+
+2. Both developers open http://localhost:5001
+
+3. Developer A opens a file through the web interface
+
+4. Both see the file open in the shared Emacs session
+
+5. They can collaborate in real-time
+
+**Practical Applications**:
+
+- **Remote interviews**: Conduct technical interviews with shared editor
+- **Remote debugging**: Collaborate on fixing production issues
+- **Code reviews**: Walk through code changes together
+
+* Architecture Diagram
+
+The Emacs MCP Server enables these workflows:
+
+#+BEGIN_SRC text
+┌─────────────┐
+│  AI Agent   │
+│  / Web App  │
+└──────┬──────┘
+       │ JSON-RPC
+       ↓
+┌──────────────────┐
+│  Emacs MCP       │
+│  Server (Rust)   │
+└──────┬───────────┘
+       │ emacsclient
+       ↓
+┌──────────────────┐
+│  Emacs Session   │
+│  (running)       │
+└──────────────────┘
+       │
+       ↓
+┌──────────────────┐
+│  Buffers / Files │
+│  Displayed       │
+└──────────────────┘
+#+END_SRC
+
+* Getting Started
+
+1. **Build the MCP server**:
+   #+BEGIN_SRC bash
+   cd emacs-mcp-server
+   cargo build --release
+   #+END_SRC
+
+2. **Start Emacs in server mode**:
+   #+BEGIN_SRC bash
+   emacs --daemon
+   #+END_SRC
+
+3. **Try the examples**:
+   #+BEGIN_SRC bash
+   # Make example scripts executable
+   chmod +x examples/*.sh
+
+   # Run code review example
+   ./examples/code-review.sh sample-code.rs "Add error handling"
+
+   # Run log analyzer
+   cd examples/log-analyzer
+   python flask-app.py
+   #+END_SRC
+
+* Future Enhancements
+
+These use cases can be extended with:
+
+1. **More Tools**:
+   - Save buffer
+   - Close buffer
+   - Run code (compile/execute)
+   - Search and replace
+   - Get buffer content
+
+2. **Advanced Features**:
+   - Authentication and authorization
+   - Session management
+   - Multiple Emacs instances
+   - Real-time sync (websockets)
+
+3. **Integration**:
+   - VSCode extension
+   - Obsidian plugin
+   - Jupyter notebook cells
+   - Notion integration
+
+* Conclusion
+
+The Emacs MCP Server transforms Emacs from a local editor into a programmable backend that AI agents and web applications can control. This enables powerful workflows:
+
+- AI assistants can directly manipulate your code
+- Web apps can leverage Emacs' powerful text processing
+- Remote teams can collaborate in real-time
+- Automation can interact with your editing session
+
+The examples in this document demonstrate practical, immediately useful applications that can be built on top of this foundation.

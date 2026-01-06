@@ -14,7 +14,22 @@ A comprehensive system for managing multiple LLM providers (cloud and local) thr
 
 ## Quick Start
 
-### 1. Setup Environment
+### 1. Build Rust CLI Tools
+
+```bash
+# Build all Rust tools and servers
+./scripts/build-rust.sh
+
+# The following binaries will be available:
+# - rust-wip/target/release/llm-status    - Check LLM provider status
+# - rust-wip/target/release/llm-history   - View API usage history
+# - rust-wip/target/release/llm-costs     - View cost summaries
+# - rust-wip/target/release/llm-stats     - View usage statistics
+# - rust-wip/target/release/llm-config    - Manage configuration
+# - emacs-mcp-server/target/release/mcp-server - MCP server for Emacs
+```
+
+### 2. Setup Environment
 
 ```bash
 # Clone and navigate to the project
@@ -59,7 +74,7 @@ curl http://localhost:4000/health/readiness
 ./check-usage.sh
 ```
 
-### 4. Configure Emacs
+### 5. Configure Emacs
 
 Load the unified configuration:
 
@@ -101,13 +116,249 @@ emacs-ai-api/
       config-openai.yaml     # Configuration with OpenAI
       config.yaml           # Base configuration
     emacs/
-      gptel-openai.el       # OpenAI + unified gateway config
+      gptel-unified.el      # Unified configuration for all providers
       gptel-ollama-selector.el # Dynamic Ollama selection
+      subject.el            # Subject prompt helpers
     docs/
       testing-openai.md     # OpenAI testing guide
     check-usage.sh          # View usage statistics
     test-ollama-usage.sh    # Test Ollama models
     test-openai-batch.sh    # Test OpenAI models
+
+  rust-wip/
+    src/
+      client.rs             # HTTP clients for LiteLLM, Ollama, llama.cpp
+      config.rs             # Configuration management
+      database.rs           # SQLite database operations
+      models.rs             # Data models
+      bin/
+        status.rs           # llm-status: Check provider status
+    Cargo.toml              # Rust dependencies
+
+  emacs-mcp-server/
+    src/
+      mcp.rs                # MCP protocol implementation
+      emacs.rs              # Emacs-specific tools
+      tools.rs              # Available tools
+    Cargo.toml              # Rust dependencies
+
+  scripts/
+    build-rust.sh           # Build Rust tools
+    test-all.sh             # Test all providers
+    llm-history.sh          # View recent API calls
+    show-budget.sh          # View budget information
+    check-usage.sh          # View usage statistics
+```
+
+## Rust CLI Tools
+
+The project includes Rust-based CLI tools for managing LLM usage and monitoring provider status.
+
+### Available Tools
+
+#### llm-status
+Check the status of all LLM providers and models.
+
+```bash
+# Check all providers
+./rust-wip/target/release/llm-status
+
+# Check specific provider
+./rust-wip/target/release/llm-status --provider litellm
+
+# Verbose output with all model details
+./rust-wip/target/release/llm-status --verbose
+
+# Output format: table, json, or simple
+./rust-wip/target/release/llm-status --format json
+```
+
+Output example:
+```
+LLM Provider Status Check
+=========================
+
+Service      Status      Latency    Models         Endpoint
+LiteLLM      ● Online    45ms       12 models      http://localhost:4000/v1
+Ollama       ● Online    23ms       8 models       http://localhost:11434
+llama.cpp    ✗ Offline   -          -              http://localhost:8080
+```
+
+#### llm-history
+View API usage history from the database.
+
+```bash
+# View recent usage (default: 100 entries)
+./rust-wip/target/release/llm-history
+
+# Limit to specific number
+./rust-wip/target/release/llm-history --limit 50
+
+# Filter by project
+./rust-wip/target/release/llm-history --project my-app
+
+# JSON output
+./rust-wip/target/release/llm-history --format json
+```
+
+#### llm-costs
+View cost summaries for usage.
+
+```bash
+# View costs for today
+./rust-wip/target/release/llm-costs --period today
+
+# View costs for this week
+./rust-wip/target/release/llm-costs --period week
+
+# View costs by model
+./rust-wip/target/release/llm-costs --by model
+
+# Filter by project
+./rust-wip/target/release/llm-costs --project my-app
+```
+
+#### llm-stats
+Display usage statistics.
+
+```bash
+# Overall statistics
+./rust-wip/target/release/llm-stats
+
+# Statistics for specific provider
+./rust-wip/target/release/llm-stats --provider openai
+
+# Top models by usage
+./rust-wip/target/release/llm-stats --top models
+
+# Top projects by cost
+./rust-wip/target/release/llm-stats --top projects
+```
+
+#### llm-config
+Manage configuration settings.
+
+```bash
+# Show current configuration
+./rust-wip/target/release/llm-config show
+
+# Set default model
+./rust-wip/target/release/llm-config set default.model gpt-4o
+
+# Add project-specific virtual key
+./rust-wip/target/release/llm-config add-project my-project --key sk-virt-123
+
+# List all projects
+./rust-wip/target/release/llm-config list-projects
+```
+
+### MCP Server for Emacs
+
+The `emacs-mcp-server` provides Model Context Protocol support for Emacs tool use.
+
+```bash
+# Start the MCP server
+./emacs-mcp-server/target/release/mcp-server
+
+# With custom configuration
+./emacs-mcp-server/target/release/mcp-server --config /path/to/config.toml
+```
+
+Available tools:
+- **file operations**: read, write, list files
+- **code analysis**: search, grep, analyze code
+- **terminal operations**: execute commands
+
+### Building from Source
+
+```bash
+# Build all Rust tools (release mode)
+./scripts/build-rust.sh
+
+# Build with debug information
+cd rust-wip && cargo build
+cd ../emacs-mcp-server && cargo build
+
+# Build specific binary
+cd rust-wip && cargo build --release --bin llm-status
+```
+
+### Database Configuration
+
+The Rust tools use SQLite by default for storing usage data.
+
+```bash
+# Database location: ~/.local/share/llm-tools/history.db
+# Or via environment variable: DATABASE_URL=sqlite:/custom/path.db
+
+# Migration files: rust-wip/migrations/
+# Schema includes: api_usage table with timestamps, costs, tokens
+```
+
+Configuration example (`~/.config/llm-tools/config.toml`):
+
+```toml
+[litellm]
+base_url = "http://localhost:4000/v1"
+master_key = "sk-local-test-key-123"
+
+[database]
+url = "sqlite:/Users/mike/.local/share/llm-tools/history.db"
+history_retention_days = 90
+
+[defaults]
+model = "gpt-4o"
+temperature = 0.7
+max_tokens = 1024
+
+[projects.my-app]
+virtual_key = "sk-virt-myapp"
+default_model = "gpt-4o-mini"
+budget_limit = 10.0
+budget_period = "monthly"
+```
+
+### Examples
+
+#### Check all services status
+
+```bash
+./rust-wip/target/release/llm-status --format simple
+```
+
+Output:
+```
+✓ LiteLLM Gateway - 12 models available
+✓ Ollama - 8 models available
+✗ llama.cpp - Server not running (start with: ./server -m model.gguf)
+```
+
+#### Monitor usage in real-time
+
+```bash
+# Watch recent usage every 5 seconds
+watch -n 5 './rust-wip/target/release/llm-history --limit 10 --format simple'
+```
+
+#### Cost report by project
+
+```bash
+./rust-wip/target/release/llm-costs --period month --by project
+```
+
+Output:
+```
+Cost Summary - 2025-01-01 to 2025-01-31
+======================================
+
+Total Cost: $45.23
+Total Tokens: 1,234,567
+Request Count: 342
+
+By Project:
+  my-app              $25.67
+  documentation       $12.34
+  testing             $7.22
 ```
 
 ## Configuration

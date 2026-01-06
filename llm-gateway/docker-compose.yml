@@ -34,6 +34,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      ZAI_API_KEY: ${ZAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-${GEMINI_API_KEY:-}}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
@@ -46,13 +47,16 @@ services:
       # Enable UI and logging
       LITELLM_UI: "True"
       LITELLM_LOG: INFO
+
+      # Store models and credentials in database (enables adding via UI)
+      STORE_MODEL_IN_DB: "True"
       
       # Optional Redis for distributed caching (uncomment if needed)
       # REDIS_HOST: redis
       # REDIS_PORT: 6379
       # REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
-      - ./litellm/config-all-providers.yaml:/app/config.yaml:ro
+      - ./litellm/config.yaml:/app/config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
