@@ -39,21 +39,25 @@ async fn main() -> Result<(), McpError> {
         let response_json = serde_json::to_string(&response)
             .map_err(|e| McpError::SerializeError(e.to_string()))?;
 
-        writeln!(writer, "{}", response_json).map_err(|e| McpError::IoError(e.to_string()))?;
+        writeln!(writer, "{response_json}").map_err(|e| McpError::IoError(e.to_string()))?;
+        writer
+            .flush()
+            .map_err(|e| McpError::IoError(e.to_string()))?;
     }
 }
 
 async fn handle_request(request: McpRequest, executor: &mut ToolExecutor) -> McpResponse {
+    let id = request.id.clone();
     match request.method.as_str() {
-        "initialize" => handle_initialize(),
-        "tools/list" => handle_tools_list(),
+        "initialize" => handle_initialize(id),
+        "tools/list" => handle_tools_list(id),
         "tools/call" => handle_tools_call(request, executor).await,
         "shutdown" => handle_shutdown(),
-        _ => McpResponse::error(-32601, "Method not found", None),
+        _ => McpResponse::error(-32601, "Method not found", id),
     }
 }
 
-fn handle_initialize() -> McpResponse {
+fn handle_initialize(id: Option<serde_json::Value>) -> McpResponse {
     McpResponse::success(
         serde_json::json!({
             "protocolVersion": "2024-11-05",
@@ -65,13 +69,13 @@ fn handle_initialize() -> McpResponse {
                 "version": "0.1.0"
             }
         }),
-        None,
+        id,
     )
 }
 
-fn handle_tools_list() -> McpResponse {
+fn handle_tools_list(id: Option<serde_json::Value>) -> McpResponse {
     let tools = tool_registry();
-    McpResponse::success(serde_json::json!({ "tools": tools }), None)
+    McpResponse::success(serde_json::json!({ "tools": tools }), id)
 }
 
 async fn handle_tools_call(request: McpRequest, executor: &mut ToolExecutor) -> McpResponse {

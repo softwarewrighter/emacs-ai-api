@@ -104,12 +104,38 @@ impl Tool for SplitWindowTool {
     }
 }
 
+pub struct EvalTool;
+
+impl Tool for EvalTool {
+    fn name(&self) -> &str {
+        "eval"
+    }
+
+    fn description(&self) -> &str {
+        "Evaluate arbitrary Emacs Lisp code and return the result"
+    }
+
+    fn input_schema(&self) -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Emacs Lisp code to evaluate"
+                }
+            },
+            "required": ["code"]
+        })
+    }
+}
+
 pub fn tool_registry() -> Vec<Value> {
     let tools: Vec<Box<dyn Tool>> = vec![
         Box::new(DiredTool),
         Box::new(OpenFileTool),
         Box::new(InsertTool),
         Box::new(SplitWindowTool),
+        Box::new(EvalTool),
     ];
 
     tools
@@ -141,6 +167,7 @@ impl ToolExecutor {
             "open-file" => self.execute_open_file(args).await,
             "insert" => self.execute_insert(args).await,
             "split-window" => self.execute_split_window(args).await,
+            "eval" => self.execute_eval(args).await,
             _ => Err(McpError::EmacsError(format!("Unknown tool: {name}"))),
         }
     }
@@ -205,6 +232,15 @@ impl ToolExecutor {
             .execute(expr)
             .await
             .map(|_| format!("Split window: {direction}"))
+    }
+
+    async fn execute_eval(&self, args: Option<&Value>) -> Result<String, McpError> {
+        let code = args
+            .and_then(|v| v.get("code"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| McpError::EmacsError("Missing required parameter: code".to_string()))?;
+
+        self.client.evaluate(code).await
     }
 }
 
