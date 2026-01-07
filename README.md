@@ -2,6 +2,8 @@
 
 A comprehensive system for managing multiple LLM providers (cloud and local) through a unified interface, with special focus on Emacs integration, cost management, and per-project budgeting.
 
+- (Video Explainer)[https://www.youtube.com/watch?v=e1OoixGDMXs]
+
 ## Features
 
 - **Unified Gateway**: Single endpoint for all LLM providers via LiteLLM
