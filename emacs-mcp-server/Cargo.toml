@@ -2,6 +2,9 @@
 name = "emacs-mcp-server"
 version = "0.1.0"
 edition = "2024"
+license = "MIT OR GPL-3.0-or-later"
+description = "MCP (Model Context Protocol) server for Emacs integration"
+repository = "https://github.com/softwarewrighter/emacs-ai-api"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
