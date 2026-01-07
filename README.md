@@ -474,7 +474,10 @@ If usage data appears empty:
 
 ## License
 
-MIT
+This project uses dual licensing. See [docs/dual-license.md](docs/dual-license.md) for details.
+
+- **Emacs Lisp code**: GPL-3.0-or-later (required for Emacs integration)
+- **Rust MCP Server**: MIT OR GPL-3.0-or-later (your choice)
 
 ## Support
 
